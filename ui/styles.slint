@@ -1,0 +1,25 @@
+// ui/styles.slint
+
+export global Theme {
+    
+    // Define your color palette as properties
+    in-out property  <color> background:       #221b1b; // Van Dyke Brown
+    in-out property <color> foreground:       #FFD964; // Mustard Gold
+    in-out property <color> foreground-dim:   Theme.foreground.transparentize(0.4); // Dimmer Gold (Adjust transparency)
+
+    in-out property <color> card-background:  #ffdfc2; // Linen Cream
+    in-out  property <color> card-foreground:  #221b1b; // Brown (same as main bg)
+    in-out  property <color> card-foreground-dim: Theme.card-foreground.transparentize(0.4); // Dimmer Brown
+
+    in-out property <color> accent-green:     #157F1F; // Office Green
+    in-out  property <color> accent-red:       #BF4342; // Bittersweet Shimmer
+    in-out  property <color> accent-green-dim: Theme.accent-green.transparentize(0.2); // Dimmer Green
+    in-out property <color> accent-red-dim:   Theme.accent-red.transparentize(0.2); // Dimmer Red
+
+    // Maybe define standard padding/spacing too
+    in-out property <length> padding-outer: 10px;
+    in-out property <length> padding-card: 10px;
+    in-out property <length> spacing-outer: 10px;
+    in-out property <length> spacing-card: 8px;
+    in-out property <length> spacing-button: 5px;
+}

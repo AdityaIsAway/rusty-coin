@@ -1,0 +1,97 @@
+// ui/coincard.slint
+
+// Imports - Add Rectangle, TouchArea, Image, Text if not implicitly available
+import { VerticalBox, HorizontalBox } from "std-widgets.slint";
+import { CoinData } from "common.slint";
+import { Theme } from "styles.slint";
+
+export component CoinCard inherits Rectangle {
+    in property <CoinData> data;
+    callback remove_clicked(string);
+    callback card_clicked(string); // Callback for clicking the card
+
+    // --- Bind root background to the state of the main TouchArea below ---
+    background: card_touch_area.pressed ? Theme.card-background.darker(10%) : (card_touch_area.has-hover ? Theme.card-background.darker(5%) : Theme.card-background);
+    // --- Animate background changes smoothly ---
+    animate background { duration: 150ms; easing: ease-out; }
+
+    // Other root Rectangle styling
+    border-radius: 8px;
+    min-width: 150px;
+    // Remove padding here, apply it inside the TouchArea's child instead
+
+    // --- Main TouchArea for Card Click ---
+    // Give it an ID to reference its state
+    card_touch_area := TouchArea {
+        mouse-cursor: pointer; // Set cursor
+        clicked => {
+            debug("CoinCard Clicked! ID: ", root.data.id);
+            root.card_clicked(root.data.id); // Emit the signal
+        }
+
+        // --- Card Content goes inside TouchArea ---
+        HorizontalBox {
+            padding: Theme.padding-card; // Apply padding around the content
+            spacing: Theme.spacing-card;
+            // alignment: center; // Keep commented out based on your previous preference for top-alignment
+
+            // --- Left Side ---
+            VerticalBox { // Wrapper for Icon - might help alignment consistency
+                alignment: center; // Center icon vertically within this box
+                Image {
+                    source: data.icon;
+                    width: 64px; height: 64px;
+                    image-fit: contain;
+                }
+            }
+
+            // --- Middle: Name/Symbol ---
+            VerticalBox {
+                alignment: center; // Center text lines vertically
+                horizontal-stretch: 1; // Push right content
+                Text { text: data.name; color: Theme.card-foreground; font-weight: 600; font-size: 14px; }
+                Text { text: "("+data.symbol+")"; color: Theme.card-foreground-dim; font-size: 12px; }
+            }
+
+            // --- Right Side Group ---
+            HorizontalBox {
+                spacing: Theme.spacing-button;
+                alignment: center; // Center Price Block and Remove Button
+
+                VerticalBox { // Price/Percent
+                    alignment: end;
+                    Text {
+                        text: "$" + data.price;
+                        font-size: 20px; font-weight: 600;
+                        horizontal-alignment: right;
+                        color: data.is_up ? Theme.accent-green : (data.is_down ? Theme.accent-red : Theme.card-foreground);
+                    }
+                     Text {
+                        text: data.change_percent;
+                        font-size: 12px;
+                        horizontal-alignment: right;
+                        color: data.is_up ? Theme.accent-green-dim : (data.is_down ? Theme.accent-red-dim : Theme.foreground-dim);
+                    }
+                }
+
+                remover_touch_area := TouchArea { // Remove Button
+                    width: 24px;
+                    height: 24px;
+                    clicked => { root.remove_clicked(data.id); }
+
+                    Image {
+                        source: @image-url("icons/cross-large-symbolic.svg");
+                        colorize: Theme.card-foreground; // Keep commented out unless needed
+                        width: 16px;
+                        height: 16px;
+                        image-fit: contain;
+                        vertical-alignment: center;
+                        horizontal-alignment: center;
+                        // Reference the REMOVER touch area for its specific hover
+                        opacity: remover_touch_area.has-hover ? 0.7 : 1.0;
+                    }
+                }
+            } // End Right Side Group
+        } // End Main Content HB
+    } // End Main Card TouchArea
+} // End CoinCard Component

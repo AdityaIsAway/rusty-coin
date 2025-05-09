@@ -1,0 +1,198 @@
+// ui/appwindow.slint
+
+import { VerticalBox, LineEdit, Button, ListView, HorizontalBox } from "std-widgets.slint";
+import { CoinData } from "common.slint";
+import { CoinCard } from "coincard.slint";
+import { Theme } from "styles.slint";
+
+export component AppWindow inherits Window {
+    title: "RustyCoin Tracker";
+    min-width: 440px;
+    min-height: 330px;
+    background: Theme.background;
+
+    // State Properties
+    in-out property <[CoinData]> tracked_coins: [];
+    in-out property <bool> is_refreshing: false;
+    in-out property <string> current_coin_input: "";
+
+    // Callbacks
+    callback add_coin(string);
+    callback remove_coin(string);
+    callback refresh_all();
+    callback open_coin_link(string);
+
+    // Main layout
+    main_layout := VerticalBox {
+        spacing: Theme.spacing-outer;
+        padding: Theme.spacing-outer;
+
+        // Top Input Area
+        HorizontalBox {
+            spacing: Theme.spacing-button;
+
+            input_container := Rectangle {
+                padding: 5px;
+                // Style the container rectangle
+                background: Theme.card-background; // Dim brown bg
+                border-width: 1px;
+                //border-color: self.has-focus ? Theme.foreground : Theme.foreground.transparentize(0.7); // Highlight border on focus
+                border-radius: 4px;
+                height: 32px; // Give it a fixed height (adjust as needed)
+                horizontal-stretch: 1; // Allow container to stretch
+
+                // TextInput handles the actual text input logic
+                coin_input := TextInput {
+                    // Bind text property to the AppWindow state
+                    text <=> root.current_coin_input;
+                    width: parent.width; // Fill the container
+                    height: parent.height;
+                    vertical-alignment: center;
+                    font-size: 14px;
+                    // Set text color based on whether it's placeholder or actual input
+                    color: self.text == "" ? Theme.card-foreground-dim : Theme.card-foreground;
+                    x: parent.padding;
+
+                    // Handle Enter key press
+                    accepted => {
+                        root.add_coin(self.text);
+                        root.current_coin_input = ""; // Clear state variable
+                    }
+                }
+
+                // Placeholder Text (Only visible when TextInput is empty)
+                placeholder := Text {
+                    visible: coin_input.text == ""; // Show only when input is empty
+                    text: "Enter Coin ID";
+                    x: parent.padding; // Align with TextInput padding
+                    y: parent.padding;
+                    width: parent.width - parent.padding*2;
+                    height: parent.height - parent.padding*2;
+                    vertical-alignment: center;
+                    color: Theme.card-foreground; // Dim gold placeholder
+                    font-size: 14px; // Match TextInput font size
+                }
+            }
+
+            add_touch_area := TouchArea {
+                width: 28px;
+                height: 28px;
+                clicked => { root.add_coin(coin_input.text); coin_input.text = ""; }
+        
+                add_icon := Image {
+                    source: @image-url("icons/plus-symbolic.svg");
+                    width: 16px;
+                    height: 16px;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                    colorize: Theme.foreground;
+                    opacity: add_touch_area.enabled ? (add_touch_area.has-hover ? 0.8 : 1.0) : 0.4;
+                }
+            }
+
+            refresh_touch_area := TouchArea {
+                width: 28px;
+                height: 28px;
+                enabled: !root.is_refreshing;
+                clicked => { root.refresh_all(); }
+
+                refresh_icon := Image {
+                    source: !root.is_refreshing ? @image-url("icons/refresh-symbolic.svg") : @image-url("icons/stop-symbolic.svg");
+                    width: 16px;
+                    height: 16px;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                    colorize: Theme.foreground;
+                    opacity: refresh_touch_area.has-hover ? 0.8 : 1.0;
+                }
+            }
+        } // End Input Area HB
+
+        // Content Area Container
+        VerticalBox {
+            vertical-stretch: 1;
+            horizontal-stretch: 1;
+
+            // Show Loading indicator IF refreshing
+            if root.is_refreshing : loading_indicator := VerticalBox {
+                 alignment: center; // Horizontally center children within this box
+                 spacing: 10px;
+
+                 // Wrapper Box for Image Centering
+                 HorizontalBox {
+                    alignment: center;
+                     loading_image := Image {
+                        image-fit: contain;
+                         source: @image-url("icons/update-symbolic.svg");
+                         width: 64px; // Fill wrapper
+                         height: 64px;
+                         colorize: Theme.foreground;
+                     }
+                 } // End Wrapper Box
+
+                 Text {
+                     text: "Loading Coins...";
+                     horizontal-alignment: center;
+                     font-size: 18px;
+                     font-weight: 300;
+                     color: Theme.foreground;
+                 }
+                 Text {
+                     text: "This might take a moment.";
+                     horizontal-alignment: center;
+                     font-size: 14px;
+                     color: Theme.foreground-dim;
+                 }
+            } // End Loading if
+
+            // Show "No coins" message IF NOT refreshing AND list is empty
+            if !root.is_refreshing && root.tracked_coins.length == 0 : no_coins_text := VerticalBox {
+                 alignment: center; // Horizontally center children within this box
+                 spacing: 10px;
+
+                 // Wrapper Box for Image Centering
+                 HorizontalBox {
+                    alignment: center;
+                     no_coins_image := Image {
+                         source: @image-url("icons/find-symbolic.svg");
+                         width: 64px; // Fill wrapper
+                         height: 64px;
+                         colorize: Theme.foreground;
+                     }
+                 } // End Wrapper Box
+
+                 Text {
+                     text: "No Coins Tracked";
+                     font-size: 18px;
+                     font-weight: 300;
+                     horizontal-alignment: center;
+                     color: Theme.foreground;
+                 }
+                  Text {
+                     text: "Enter a coin ID above to start.";
+                     wrap: word-wrap;
+                     horizontal-alignment: center;
+                     font-size: 14px;
+                     color: Theme.foreground-dim;
+                 }
+            } // End No Coins if
+
+            // Show ListView IF NOT refreshing AND list is NOT empty
+            if !root.is_refreshing && root.tracked_coins.length > 0 : list_view := ListView {
+                // Aligns top by default
+                vertical-stretch: 1;
+                width: 100%;
+
+                for coin[i] in root.tracked_coins : VerticalBox { // Wrapper for spacing
+                    padding-bottom: Theme.spacing-card; // Spacing between rows
+                    card := CoinCard {
+                        data: coin;
+                        remove_clicked(id) => { root.remove_coin(id); }
+                        card_clicked(id) => { root.open_coin_link(id); }
+                    }
+                }
+            } // End ListView condition
+
+        } // End Content Area VB
+    } // End Main VB
+} // End AppWindow
